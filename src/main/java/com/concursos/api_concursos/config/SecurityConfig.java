@@ -37,16 +37,16 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Libera todos os endpoints temporariamente, comentar quando encerrar o desenvolvimento
-                .anyRequest().permitAll()
+                //.anyRequest().permitAll()
                 
                 // ESTA SERÁ A CONFIGURAÇÃO FINAL EM PRODUÇÃO:
-                /*
+                
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/api/auth/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/editais/**", "/api/bancas/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN") 
                 
                 .anyRequest().authenticated()
-                */
+                
             )
             .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class);
 
