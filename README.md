@@ -76,6 +76,7 @@ TokenService.java: Codifica e decodifica os Tokens JWT da aplicação utilizando
 ScraperService.java: O motor integrador da aplicação. É responsável por buscar as bancas cadastradas que possuem vinculação com robôs ativos, buscar a instância lógica do robô dinamicamente pelo contexto interno do Spring, receber a estrutura limpa de dados coletados e avaliar se o edital deve ser inserido como novo ou apenas atualizado no banco.
 
 O Mecanismo Scraper e o Padrão Strategy
+
 O projeto adota o padrão de projeto arquitetural Strategy para garantir que o sistema consiga escalar a sua infraestrutura e aceitar dezenas de novos robôs de leitura sem precisar reescrever as classes de negócio centrais.
 
 A interface abstrata BancaScraper define o contrato oficial de comportamento do sistema. Qualquer nova banca que necessite ser integrada ao sistema precisa apenas criar uma nova classe Java que implemente essa interface e assinar o método executarScraping.
@@ -91,7 +92,8 @@ Abordagem de Substituição de Código: Você pode manter o mesmo nome no compon
 
 Abordagem de Substituição de Banco: Se você criar um novo scraper com outro nome (ex: cebraspeScraperV2), basta ir ao Swagger UI (ou diretamente na tabela banca através de uma query SQL) e atualizar o valor da coluna scraper_bean daquela banca para o novo nome.
 
-Exemplo Prático de Funcionamento: O Caso Cebraspe
+Exemplo Prático de Funcionamento: Cebraspe
+
 O robô focado na leitura do portal do Cebraspe (CebraspeScraper.java) demonstra a maturidade da arquitetura da aplicação ao lidar com portais web modernos construídos em arquiteturas do tipo SPA (Single Page Applications, como Angular e React).
 
 Em vez de inicializar instâncias pesadas de navegadores virtuais em segundo plano (como Selenium ou Puppeteer), que degradam o desempenho da hospedagem e geram consumo excessivo de memória RAM, o robô intercepta diretamente a comunicação de rede das chamadas de API REST ocultas da própria organizadora através do Jsoup, tratando as respostas JSON de forma veloz com a biblioteca Jackson.
@@ -99,6 +101,7 @@ Em vez de inicializar instâncias pesadas de navegadores virtuais em segundo pla
 Para colocar o robô para rodar na sua máquina local ou em ambiente simulado do zero, o fluxo completo consiste nas duas etapas práticas descritas abaixo:
 
 Passo 1: Cadastrar a Banca através do Endpoint
+
 Abra a página do Swagger UI no seu navegador, expanda a aba referente ao gerenciamento de Bancas e localize a rota de criação: POST /api/admin/bancas.
 
 Clique na opção Try it out e insira exatamente o objeto estruturado JSON abaixo dentro do corpo da requisição:
@@ -110,20 +113,20 @@ JSON
   "siteOficial": "https://www.cebraspe.org.br/concursos/",
   "scraperBean": "cebraspeScraper"
 }
-Clique no botão azul Execute. A aplicação processará a requisição, validará que o identificador cebraspeScraper é uma classe válida registrada no contexto do projeto e criará o registro na tabela de banco de dados, retornando o código de status HTTP 211 Created.
 
-(Nota: O projeto conta de fábrica com uma implementação chamada "exemploScraper". Caso queira realizar testes internos sem disparar chamadas de rede reais para servidores externos, basta criar uma banca associando este termo ao campo scraperBean).
+Clique no botão Execute. A aplicação processará a requisição, validará que o identificador cebraspeScraper é uma classe válida registrada no contexto do projeto e criará o registro na tabela de banco de dados, retornando o código de status HTTP 211 Created.
 
 Passo 2: Execução Interna do Processamento do Robô
+
 Com a banca devidamente cadastrada, o motor de execução pode ser ativado a qualquer momento executando uma chamada na rota POST /api/admin/scrapers/disparar-todos. Ao receber o sinal, a classe ScraperService executa as seguintes ações de processamento de forma automatizada:
 
 Mapeamento de Contexto: A classe lê o banco de dados, encontra a linha correspondente ao Cebraspe e solicita ao gerenciador de componentes do Spring que traga a instância da estratégia registrada como cebraspeScraper.
 
-Fase 1 de Coleta (Listagem): O robô realiza uma requisição para a rota restrita de eventos gerais do portal alvo, obtendo uma árvore de dados que classifica os concursos ativos (ex: inscrições abertas, andamento, encerrados) e extrai os códigos numéricos de identificação de cada edital na plataforma.
+Fase 1: O robô realiza uma requisição para a rota restrita de eventos gerais do portal alvo, obtendo uma árvore de dados que classifica os concursos ativos (ex: inscrições abertas, andamento, encerrados) e extrai os códigos numéricos de identificação de cada edital na plataforma.
 
-Fase 2 de Coleta (Detalhamento): O robô executa iterações em laço, montando URLs de consulta dinâmicas com os códigos obtidos. Para cada concurso individual, ele consome a resposta de dados rica fornecida, extraindo informações cruciais sobre as áreas de atuação, remuneração máxima prevista e quantitativo total de vagas.
+Fase 2: O robô executa iterações em laço, montando URLs de consulta dinâmicas com os códigos obtidos. Para cada concurso individual, ele consome a resposta de dados rica fornecida, extraindo informações cruciais sobre as áreas de atuação, remuneração máxima prevista e quantitativo total de vagas.
 
-Tratamento de Expressões Regulares (Regex): O robô extrai strings brutas descritivas sobre cronogramas e utiliza padrões Regex para mapear formatos de data nacionais (dd/MM/yyyy), convertendo strings em objetos estruturados de tempo (LocalDateTime) manipuláveis pelo sistema.
+Tratamento de Expressões Regulares: O robô extrai strings brutas descritivas sobre cronogramas e utiliza padrões Regex para mapear formatos de data nacionais (dd/MM/yyyy), convertendo strings em objetos estruturados de tempo (LocalDateTime) manipuláveis pelo sistema.
 
 Auditoria de Arquivos de Abertura: O scraper analisa a listagem de links de documentos anexados ao painel do concurso. Ele rastreia metadados em busca de menções a termos de "abertura", salvando o link definitivo do arquivo PDF direto do repositório da banca e usando o carimbo de data mais antigo encontrado como a data oficial de nascimento daquele certame.
 
