@@ -1,8 +1,8 @@
-API Concursos Públicos
+# API Concursos Públicos
 
 Este projeto é uma API REST desenvolvida em Spring Boot com Java 21 e PostgreSQL. O objetivo principal do sistema é automatizar a coleta, estruturação e disponibilização de dados sobre concursos públicos de diversas bancas organizadoras, centralizando informações críticas como órgãos, vagas, remunerações e links oficiais de editais.
 
-Como Rodar o Projeto com Docker
+## Como Rodar o Projeto com Docker
 
 Pré-requisitos:
 Docker e Docker Compose instalados na máquina.
@@ -20,13 +20,13 @@ Para acessar a documentação interativa dos endpoints, testar os fluxos de requ
 
 http://localhost:8080/swagger-ui.html
 
-Arquitetura e Estrutura de Arquivos
+## Arquitetura e Estrutura de Arquivos
 
 O sistema foi estruturado seguindo os padrões recomendados de desenvolvimento de software, dividindo a aplicação em camadas claras para garantir modularidade, manutenibilidade e facilidade de expansão.
 
 Abaixo está o mapeamento dos principais componentes organizados no código fonte da aplicação:
 
-Camada de Configurações (config/)
+### Camada de Configurações (config/)
 
 DatabaseSeedConfig.java: Executa rotinas imediatamente após a inicialização do banco. Verifica se a tabela de usuários está vazia e gera automaticamente as credenciais do primeiro administrador do sistema (admin@concursos.com / senha: Admin) utilizando a criptografia BCrypt.
 
@@ -36,7 +36,7 @@ SecurityConfig.java e SecurityFilter.java: Configura os filtros de proteção de
 
 SwaggerConfig.java: Customiza as informações de título, descrição e versão do projeto que aparecem na interface web interativa do Swagger.
 
-Camada de Controladores (controller/)
+### Camada de Controladores (controller/)
 
 Responsável pela exposição das rotas HTTP da API. O mapeamento divide o acesso público da navegação de cunho restrito e administrativo:
 
@@ -50,7 +50,7 @@ ScraperController.java (/api/admin/scrapers): Endpoint administrativo focado em 
 
 UsuarioController.java (/api/admin/usuarios): Permite listar os administradores cadastrados ou adicionar novas contas autorizadas ao painel interno.
 
-Camada de Repositórios (repository/)
+### Camada de Repositórios (repository/)
 
 Interfaces que herdam os comportamentos padrão de CRUD do Spring Data JPA e implementam regras cruciais de integridade de dados:
 
@@ -62,7 +62,7 @@ UsuarioRepository.java: Localiza o perfil de acesso mapeado na base através do 
 
 LogScraperRepository.java: Realiza a escrita do histórico de auditoria técnica das execuções do mecanismo.
 
-Camada de Modelos e Dados (model/)
+### Camada de Modelos e Dados (model/)
 
 Banca.java: Representa a entidade da organizadora, associando seus dados institucionais ao nome do identificador do robô (scraperBean) responsável por lê-la.
 
@@ -72,7 +72,7 @@ LogScraper.java: Grava informações de metadados das tentativas de varredura (d
 
 Edital.java: Mapeia os dados extraídos do concurso. Possui o campo jsonCargos anotado nativamente como um tipo jsonb do PostgreSQL (@JdbcTypeCode(SqlTypes.JSON)). Isso permite persistir matrizes de cargos, remunerações e distribuição de vagas dinâmicas em formato de texto estruturado dentro da própria tabela, eliminando a necessidade de mapear relacionamentos pesados.
 
-Camada de Serviços (service/)
+### Camada de Serviços (service/)
 
 BancaService.java e UsuarioService.java: Centralizam regras de validação cadastral e conversão de dados entre requisições.
 
@@ -82,7 +82,7 @@ TokenService.java: Codifica e decodifica os Tokens JWT da aplicação utilizando
 
 ScraperService.java: O motor integrador da aplicação. É responsável por buscar as bancas cadastradas que possuem vinculação com robôs ativos, buscar a instância lógica do robô dinamicamente pelo contexto interno do Spring, receber a estrutura limpa de dados coletados e avaliar se o edital deve ser inserido como novo ou apenas atualizado no banco.
 
-O Mecanismo Scraper e o Padrão Strategy
+## O Mecanismo Scraper e o Padrão Strategy
 
 O projeto adota o padrão de projeto arquitetural Strategy para garantir que o sistema consiga escalar a sua infraestrutura e aceitar dezenas de novos robôs de leitura sem precisar reescrever as classes de negócio centrais.
 
@@ -99,7 +99,7 @@ Abordagem de Substituição de Código: Você pode manter o mesmo nome no compon
 
 Abordagem de Substituição de Banco: Se você criar um novo scraper com outro nome (ex: cebraspeScraperV2), basta ir ao Swagger UI (ou diretamente na tabela banca através de uma query SQL) e atualizar o valor da coluna scraper_bean daquela banca para o novo nome.
 
-Exemplo Prático de Funcionamento: Cebraspe
+## Exemplo Prático de Funcionamento: Cebraspe
 
 O robô focado na leitura do portal do Cebraspe (CebraspeScraper.java) demonstra a maturidade da arquitetura da aplicação ao lidar com portais web modernos construídos em arquiteturas do tipo SPA (Single Page Applications, como Angular e React).
 
@@ -107,7 +107,7 @@ Em vez de inicializar instâncias pesadas de navegadores virtuais em segundo pla
 
 Para colocar o robô para rodar na sua máquina local ou em ambiente simulado do zero, o fluxo completo consiste nas duas etapas práticas descritas abaixo:
 
-Passo 1: Cadastrar a Banca através do Endpoint
+### Passo 1: Cadastrar a Banca através do Endpoint
 
 Abra a página do Swagger UI no seu navegador, expanda a aba referente ao gerenciamento de Bancas e localize a rota de criação: POST /api/admin/bancas.
 
@@ -123,7 +123,7 @@ JSON
 
 Clique no botão Execute. A aplicação processará a requisição, validará que o identificador cebraspeScraper é uma classe válida registrada no contexto do projeto e criará o registro na tabela de banco de dados, retornando o código de status HTTP 211 Created.
 
-Passo 2: Execução Interna do Processamento do Robô
+### Passo 2: Execução Interna do Processamento do Robô
 
 Com a banca devidamente cadastrada, o motor de execução pode ser ativado a qualquer momento executando uma chamada na rota POST /api/admin/scrapers/disparar-todos. Ao receber o sinal, a classe ScraperService executa as seguintes ações de processamento de forma automatizada:
 
