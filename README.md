@@ -1,4 +1,5 @@
 API Concursos Públicos
+
 Este projeto é uma API REST desenvolvida em Spring Boot com Java 21 e PostgreSQL. O objetivo principal do sistema é automatizar a coleta, estruturação e disponibilização de dados sobre concursos públicos de diversas bancas organizadoras, centralizando informações críticas como órgãos, vagas, remunerações e links oficiais de editais.
 
 Como Rodar o Projeto com Docker
