@@ -1,0 +1,35 @@
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: concursos-postgres
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=concursos_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - concursos-network
+
+  app:
+    build: .
+    container_name: api-concursos-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/concursos_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=secret
+    depends_on:
+      - postgres-db
+    networks:
+      - concursos-network
+
+volumes:
+  postgres_data:
+
+networks:
+  concursos-network:
+    driver: bridge

@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: api-concursos
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/concursos_db
+    username: admin
+    password: secret
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+# Configuração inicial do Swagger
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: alpha
