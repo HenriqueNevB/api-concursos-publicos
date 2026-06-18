@@ -113,12 +113,12 @@ Abra a página do Swagger UI no seu navegador, expanda a aba referente ao gerenc
 
 Clique na opção Try it out e insira exatamente o objeto estruturado JSON abaixo dentro do corpo da requisição:
 
-JSON
-{
-  "nome": "Centro Brasileiro de Pesquisa em Avaliação e Seleção e de Promoção de Eventos",
-  "sigla": "CEBRASPE",
-  "siteOficial": "https://www.cebraspe.org.br/concursos/",
-  "scraperBean": "cebraspeScraper"
+JSON  
+{  
+  "nome": "Centro Brasileiro de Pesquisa em Avaliação e Seleção e de Promoção de Eventos",  
+  "sigla": "CEBRASPE",  
+  "siteOficial": "https://www.cebraspe.org.br/concursos/",  
+  "scraperBean": "cebraspeScraper"  
 }
 
 Clique no botão Execute. A aplicação processará a requisição, validará que o identificador cebraspeScraper é uma classe válida registrada no contexto do projeto e criará o registro na tabela de banco de dados, retornando o código de status HTTP 211 Created.
