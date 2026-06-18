@@ -3,16 +3,17 @@ API Concursos Públicos
 Este projeto é uma API REST desenvolvida em Spring Boot com Java 21 e PostgreSQL. O objetivo principal do sistema é automatizar a coleta, estruturação e disponibilização de dados sobre concursos públicos de diversas bancas organizadoras, centralizando informações críticas como órgãos, vagas, remunerações e links oficiais de editais.
 
 Como Rodar o Projeto com Docker
-Pré-requisitos
+
+Pré-requisitos:
 Docker e Docker Compose instalados na máquina.
 
-Execução
+Execução:
 Toda a infraestrutura necessária (o banco de dados PostgreSQL e a própria aplicação Spring Boot) já está configurada para subir de maneira automatizada e isolada em contêineres.
 
 Para iniciar o projeto, abra o terminal na raiz do diretório onde estão localizados os arquivos do código e execute o seguinte comando:
 
-Bash
 docker compose up --build
+
 O Docker baixará as imagens necessárias, criará a estrutura de tabelas na base de dados automaticamente, executará a carga inicial (seed) do usuário administrador padrão e iniciará o servidor. A aplicação estará totalmente operacional na porta 8080.
 
 Para acessar a documentação interativa dos endpoints, testar os fluxos de requisições e disparar manualmente os robôs de coleta de dados, abra o seu navegador de internet e acesse o endereço do Swagger UI:
@@ -20,11 +21,13 @@ Para acessar a documentação interativa dos endpoints, testar os fluxos de requ
 http://localhost:8080/swagger-ui.html
 
 Arquitetura e Estrutura de Arquivos
+
 O sistema foi estruturado seguindo os padrões recomendados de desenvolvimento de software, dividindo a aplicação em camadas claras para garantir modularidade, manutenibilidade e facilidade de expansão.
 
 Abaixo está o mapeamento dos principais componentes organizados no código fonte da aplicação:
 
-1 Camada de Configurações (config/)
+Camada de Configurações (config/)
+
 DatabaseSeedConfig.java: Executa rotinas imediatamente após a inicialização do banco. Verifica se a tabela de usuários está vazia e gera automaticamente as credenciais do primeiro administrador do sistema (admin@concursos.com / senha: Admin) utilizando a criptografia BCrypt.
 
 ScraperScheduler.java: Gerencia o agendamento automatizado do robô. Possui um despertador interno configurado via expressão Cron que, por padrão, acorda de hora em hora para buscar novas atualizações de editais sem necessitar de interferência humana.
@@ -33,7 +36,8 @@ SecurityConfig.java e SecurityFilter.java: Configura os filtros de proteção de
 
 SwaggerConfig.java: Customiza as informações de título, descrição e versão do projeto que aparecem na interface web interativa do Swagger.
 
-2 Camada de Controladores (controller/)
+Camada de Controladores (controller/)
+
 Responsável pela exposição das rotas HTTP da API. O mapeamento divide o acesso público da navegação de cunho restrito e administrativo:
 
 AuthController.java (/api/auth): Rota pública criada para receber as credenciais de login e, em caso de sucesso, emitir o Token de acesso JWT criptografado.
@@ -46,7 +50,8 @@ ScraperController.java (/api/admin/scrapers): Endpoint administrativo focado em 
 
 UsuarioController.java (/api/admin/usuarios): Permite listar os administradores cadastrados ou adicionar novas contas autorizadas ao painel interno.
 
-3 Camada de Repositórios (repository/)
+Camada de Repositórios (repository/)
+
 Interfaces que herdam os comportamentos padrão de CRUD do Spring Data JPA e implementam regras cruciais de integridade de dados:
 
 BancaRepository.java: Valida a existência de siglas duplicadas no sistema antes da persistência.
@@ -57,7 +62,8 @@ UsuarioRepository.java: Localiza o perfil de acesso mapeado na base através do 
 
 LogScraperRepository.java: Realiza a escrita do histórico de auditoria técnica das execuções do mecanismo.
 
-4 Camada de Modelos e Dados (model/)
+Camada de Modelos e Dados (model/)
+
 Banca.java: Representa a entidade da organizadora, associando seus dados institucionais ao nome do identificador do robô (scraperBean) responsável por lê-la.
 
 Usuario.java: Representa os dados cadastrais e o nível de acesso do administrador.
@@ -66,7 +72,8 @@ LogScraper.java: Grava informações de metadados das tentativas de varredura (d
 
 Edital.java: Mapeia os dados extraídos do concurso. Possui o campo jsonCargos anotado nativamente como um tipo jsonb do PostgreSQL (@JdbcTypeCode(SqlTypes.JSON)). Isso permite persistir matrizes de cargos, remunerações e distribuição de vagas dinâmicas em formato de texto estruturado dentro da própria tabela, eliminando a necessidade de mapear relacionamentos pesados.
 
-5 Camada de Serviços (service/)
+Camada de Serviços (service/)
+
 BancaService.java e UsuarioService.java: Centralizam regras de validação cadastral e conversão de dados entre requisições.
 
 EditalService.java: Gerencia o fornecimento de editais.
