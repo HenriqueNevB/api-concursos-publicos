@@ -1,11 +1,13 @@
+# Se não tiver o .env usa os valores após ":"
+
 spring:
   application:
     name: api-concursos
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/concursos_db
-    username: admin
-    password: secret
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/concursos_db}
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:secret}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -17,10 +19,18 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
-# Configuração inicial do Swagger
+api:
+  security:
+    token:
+      secret: ${API_SECURITY_TOKEN_SECRET:chave-fallback-local-de-testes}
+
 springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
     operationsSorter: alpha
+
+bancas:
+  scraper:
+    cron: "0 0 * * * *"

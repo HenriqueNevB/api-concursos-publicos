@@ -5,6 +5,7 @@ import com.concursos.api_concursos.dto.EditalScrapedDataDTO;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import org.jsoup.Jsoup;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,8 @@ public class CebraspeScraper implements BancaScraper {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    
+    private static final Pattern DATA_PATTERN = Pattern.compile("(\\d{2}/\\d{2}/\\d{4})");
 
     @Override
     public List<EditalScrapedDataDTO> executarScraping(String urlAlvo) throws Exception {
@@ -46,34 +49,26 @@ public class CebraspeScraper implements BancaScraper {
                     EditalScrapedDataDTO editalDto = new EditalScrapedDataDTO();
                     editalDto.setTitulo("Concurso Público - " + detalhe.getEventoNomeAbreviado());
                     editalDto.setOrgao(detalhe.getEventoNomeAbreviado());
-                    editalDto.setUrlEdital("https://www.cebraspe.org.br/concursos/" + detalhe.getEventoURL());
+                    
+                    editalDto.setUrlEdital("https://www.cebraspe.org.br/concursos/" + itemCurto.getEventoURL().trim());
                     
                     processarPeriodoInscricao(detalhe.getPeriodoInscricao(), editalDto);
                     processarDataPublicacao(detalhe.getArquivosEdital(), editalDto);
 
                     List<CargoDTO> listaCargosMapeados = new ArrayList<>();
                     String remuneracaoPadrao = (detalhe.getStrEventoSalarioMaximo() != null) ? detalhe.getStrEventoSalarioMaximo() : "Consultar Edital";
-                    int vagasPadrao = 0;
-                    
-                    if (detalhe.getEventoTotalVagas() != null) {
-                        try {
-                            vagasPadrao = Integer.parseInt(detalhe.getEventoTotalVagas().replaceAll("[^0-9]", ""));
-                        } catch (NumberFormatException e) {
-                            
-                        }
-                    }
 
                     if (detalhe.getEventoCargos() != null && !detalhe.getEventoCargos().isEmpty()) {
                         for (CargoWrapper cargoJson : detalhe.getEventoCargos()) {
                             listaCargosMapeados.add(new CargoDTO(
                                     cargoJson.getArea(),
-                                    vagasPadrao, 
+                                    0, 
                                     remuneracaoPadrao,
                                     "Consultar Edital"
                             ));
                         }
                     } else {
-                        listaCargosMapeados.add(new CargoDTO("Cargos do Edital", vagasPadrao, remuneracaoPadrao, "Consultar Edital"));
+                        listaCargosMapeados.add(new CargoDTO("Cargos do Edital", 0, remuneracaoPadrao, "Consultar Edital"));
                     }
 
                     editalDto.setCargos(listaCargosMapeados);
@@ -101,19 +96,16 @@ public class CebraspeScraper implements BancaScraper {
     }
 
     private void processarPeriodoInscricao(String textoPeriodo, EditalScrapedDataDTO dto) {
-        if (textoPeriodo == null || textoPeriodo.trim().isEmpty()) {
-            return;
-        }
+        if (textoPeriodo == null || textoPeriodo.trim().isEmpty()) return;
 
-        Pattern pattern = Pattern.compile("(\\d{2}/\\d{2}/\\d{4})");
-        Matcher matcher = pattern.matcher(textoPeriodo);
-
+        Matcher matcher = DATA_PATTERN.matcher(textoPeriodo);
         List<LocalDate> datasEncontradas = new ArrayList<>();
+
         while (matcher.find()) {
             try {
                 datasEncontradas.add(LocalDate.parse(matcher.group(1), dateFormatter));
             } catch (Exception e) {
-
+                
             }
         }
 
@@ -126,9 +118,7 @@ public class CebraspeScraper implements BancaScraper {
     }
 
     private void processarDataPublicacao(List<ArquivoEditalWrapper> arquivos, EditalScrapedDataDTO dto) {
-        if (arquivos == null || arquivos.isEmpty()) {
-            return;
-        }
+        if (arquivos == null || arquivos.isEmpty()) return;
 
         LocalDateTime dataMaisAntiga = null;
 
@@ -138,15 +128,11 @@ public class CebraspeScraper implements BancaScraper {
             try {
                 LocalDateTime dataAtual = LocalDateTime.parse(arquivo.getDataArquivo(), dateTimeFormatter);
                 
-                if (arquivo.getDescricaoArquivo() != null && arquivo.getDescricaoArquivo().toLowerCase().contains("abertura")) {
-                    dto.setUrlEdital("https://www.cebraspe.org.br/concursos/arquivos/" + arquivo.getNomeArquivo());
-                }
-
                 if (dataMaisAntiga == null || dataAtual.isBefore(dataMaisAntiga)) {
                     dataMaisAntiga = dataAtual;
                 }
             } catch (Exception e) {
-                // Ignora erros em arquivos específicos
+                
             }
         }
 
@@ -155,66 +141,37 @@ public class CebraspeScraper implements BancaScraper {
         }
     }
 
-    // WRAPPERS DA LISTAGEM GERAL
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static class FaseEventoWrapper {
         private List<ListagemEventoWrapper> eventos;
-        public List<ListagemEventoWrapper> getEventos() { return eventos; }
-        public void setEventos(List<ListagemEventoWrapper> eventos) { this.eventos = eventos; }
     }
 
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static class ListagemEventoWrapper {
         private String eventoURL;
-        public String getEventoURL() { return eventoURL; }
-        public void setEventoURL(String eventoURL) { this.eventoURL = eventoURL; }
     }
 
-    // WRAPPERS DO DETALHE DO CONCURSO
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static class DetalheConcursoWrapper {
         private String eventoNomeAbreviado;
-        private String eventoURL;
-        private String eventoTotalVagas;
         private String strEventoSalarioMaximo;
         private String periodoInscricao;
         private List<CargoWrapper> eventoCargos;
         private List<ArquivoEditalWrapper> arquivosEdital;
-
-        public String getEventoNomeAbreviado() { return eventoNomeAbreviado; }
-        public void setEventoNomeAbreviado(String eventoNomeAbreviado) { this.eventoNomeAbreviado = eventoNomeAbreviado; }
-        public String getEventoURL() { return eventoURL; }
-        public void setEventoURL(String eventoURL) { this.eventoURL = eventoURL; }
-        public String getEventoTotalVagas() { return eventoTotalVagas; }
-        public void setEventoTotalVagas(String eventoTotalVagas) { this.eventoTotalVagas = eventoTotalVagas; }
-        public String getStrEventoSalarioMaximo() { return strEventoSalarioMaximo; }
-        public void setStrEventoSalarioMaximo(String strEventoSalarioMaximo) { this.strEventoSalarioMaximo = strEventoSalarioMaximo; }
-        public String getPeriodoInscricao() { return periodoInscricao; }
-        public void setPeriodoInscricao(String periodoInscricao) { this.periodoInscricao = periodoInscricao; }
-        public List<CargoWrapper> getEventoCargos() { return eventoCargos; }
-        public void setEventoCargos(List<CargoWrapper> eventoCargos) { this.eventoCargos = eventoCargos; }
-        public List<ArquivoEditalWrapper> getArquivosEdital() { return arquivosEdital; }
-        public void setArquivosEdital(List<ArquivoEditalWrapper> arquivosEdital) { this.arquivosEdital = arquivosEdital; }
     }
 
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static class CargoWrapper {
         private String area;
-        public String getArea() { return area; }
-        public void setArea(String area) { this.area = area; }
     }
 
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static class ArquivoEditalWrapper {
-        private String nomeArquivo;
-        private String descricaoArquivo;
         private String dataArquivo;
-
-        public String getNomeArquivo() { return nomeArquivo; }
-        public void setNomeArquivo(String nomeArquivo) { this.nomeArquivo = nomeArquivo; }
-        public String getDescricaoArquivo() { return descricaoArquivo; }
-        public void setDescricaoArquivo(String descricaoArquivo) { this.descricaoArquivo = descricaoArquivo; }
-        public String getDataArquivo() { return dataArquivo; }
-        public void setDataArquivo(String dataArquivo) { this.dataArquivo = dataArquivo; }
     }
 }

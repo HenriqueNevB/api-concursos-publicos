@@ -17,6 +17,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,6 +31,7 @@ public class ScraperService {
     private final LogScraperRepository logScraperRepository;
     private final ApplicationContext applicationContext;
     private final ObjectMapper objectMapper;
+    private final EditalService editalService;
 
     // Executa o processo de varredura para todas as bancas cadastradas no sistema.
     public void executarMecanismoCompleto() {
@@ -40,6 +42,13 @@ public class ScraperService {
             if (banca.getScraperBean() != null && !banca.getScraperBean().isEmpty()) {
                 processarBanca(banca);
             }
+        }
+
+        // Atualiza status de editais antigos quando a varredura acaba
+        try {
+            editalService.encerrarInscricoesVencidas();
+        } catch (Exception e) {
+            log.error("Falha ao rodar rotina de manutenção automática pós-scraping: {}", e.getMessage());
         }
     }
     
@@ -83,26 +92,79 @@ public class ScraperService {
     }
 
     private void salvarOuAtualizarEdital(Banca banca, EditalScrapedDataDTO dto) throws Exception {
-        // Verifica se o edital já existe no banco de dados pela URL
-        Edital edital = editalRepository.findByUrlEdital(dto.getUrlEdital())
-                .orElse(new Edital());
-
-        edital.setBanca(banca);
-        edital.setUrlEdital(dto.getUrlEdital());
-        edital.setTitulo(dto.getTitulo());
-        edital.setOrgao(dto.getOrgao());
-        edital.setDataPublicacao(dto.getDataPublicacao());
-        edital.setDataInscricaoInicio(dto.getDataInscricaoInicio());
-        edital.setDataInscricaoFim(dto.getDataInscricaoFim());
+        // Busca se o edital já existe pela URL
+        java.util.Optional<Edital> editalExistenteOpt = editalRepository.findByUrlEdital(dto.getUrlEdital());
         
-        if (edital.getId() == null) {
-            edital.setStatus(StatusEdital.INSCRICOES_ABERTAS); // Default
+        // Converte a lista de cargos para string JSONB
+        String novoJsonCargos = objectMapper.writeValueAsString(dto.getCargos());
+        
+        // Determina o status do DTO com base no dia atual
+        StatusEdital statusCorreto = calcularStatus(dto.getDataInscricaoFim() != null ? dto.getDataInscricaoFim().toLocalDate() : null);
+
+        if (editalExistenteOpt.isPresent()) {
+            Edital editalExistente = editalExistenteOpt.get();
+
+            // Compara se algum campo ou o status sofreu alteração
+            boolean houveMudanca = !equalsGarantido(editalExistente.getTitulo(), dto.getTitulo()) ||
+                    !equalsGarantido(editalExistente.getOrgao(), dto.getOrgao()) ||
+                    !equalsGarantido(editalExistente.getDataPublicacao(), dto.getDataPublicacao()) ||
+                    !equalsGarantido(editalExistente.getDataInscricaoInicio(), dto.getDataInscricaoInicio()) ||
+                    !equalsGarantido(editalExistente.getDataInscricaoFim(), dto.getDataInscricaoFim()) ||
+                    !equalsGarantido(editalExistente.getStatus(), statusCorreto) || // Valida mudança de status
+                    !editalExistente.getJsonCargos().equals(novoJsonCargos);
+
+            // Só faz o update se houver alteração nos dados
+            if (houveMudanca) {
+                editalExistente.setTitulo(dto.getTitulo());
+                editalExistente.setOrgao(dto.getOrgao());
+                editalExistente.setDataPublicacao(dto.getDataPublicacao());
+                editalExistente.setDataInscricaoInicio(dto.getDataInscricaoInicio());
+                editalExistente.setDataInscricaoFim(dto.getDataInscricaoFim());
+                editalExistente.setStatus(statusCorreto); // Atualiza com o status calculado
+                editalExistente.setJsonCargos(novoJsonCargos);
+                
+                editalRepository.save(editalExistente);
+                log.info("Edital atualizado devido a mudanças detectadas: {}", dto.getTitulo());
+            } else {
+                log.debug("Edital mantido sem alterações (pulando escrita): {}", dto.getTitulo());
+            }
+        } else {
+            // Se não existir monta um registro novo
+            Edital novoEdital = new Edital();
+            novoEdital.setBanca(banca);
+            novoEdital.setUrlEdital(dto.getUrlEdital());
+            novoEdital.setTitulo(dto.getTitulo());
+            novoEdital.setOrgao(dto.getOrgao());
+            novoEdital.setDataPublicacao(dto.getDataPublicacao());
+            novoEdital.setDataInscricaoInicio(dto.getDataInscricaoInicio());
+            novoEdital.setDataInscricaoFim(dto.getDataInscricaoFim());
+            novoEdital.setStatus(statusCorreto);
+            novoEdital.setJsonCargos(novoJsonCargos);
+
+            editalRepository.save(novoEdital);
+            log.info("Novo edital cadastrado com sucesso: {}", dto.getTitulo());
         }
+    }
 
-        // Converte a lista de objetos Cargo em uma string estruturada no formato JSONB do Postgres
-        String jsonCargos = objectMapper.writeValueAsString(dto.getCargos());
-        edital.setJsonCargos(jsonCargos);
+    // Define inteligentemente se as inscrições ainda estão válidas ou já encerraram.
+     
+    private StatusEdital calcularStatus(LocalDate dataInscricaoFim) {
+        if (dataInscricaoFim == null) {
+            return StatusEdital.AGUARDANDO_CRONOGRAMA; // Caso a banca não informe a data limite imediatamente
+        }
+        
+        // Se a data final for anterior a hoje, já insere como ENCERRADO
+        if (dataInscricaoFim.isBefore(LocalDate.now())) {
+            return StatusEdital.ENCERRADO;
+        }
+        
+        return StatusEdital.INSCRICOES_ABERTAS;
+    }
 
-        editalRepository.save(edital);
+    // Método para evitar NullPointerException nas checagens
+    private boolean equalsGarantido(Object obj1, Object obj2) {
+        if (obj1 == null && obj2 == null) return true;
+        if (obj1 == null || obj2 == null) return false;
+        return obj1.equals(obj2);
     }
 }

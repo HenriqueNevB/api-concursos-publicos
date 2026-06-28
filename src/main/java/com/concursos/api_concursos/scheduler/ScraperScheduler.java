@@ -1,4 +1,4 @@
-package com.concursos.api_concursos.config;
+package com.concursos.api_concursos.scheduler;
 
 import com.concursos.api_concursos.service.ScraperService;
 import lombok.RequiredArgsConstructor;

@@ -35,6 +35,12 @@ public class AuthController {
         }
 
         String token = tokenService.gerarToken(usuario);
-        return ResponseEntity.ok(new LoginResponseDTO(token));
+        
+        return ResponseEntity.ok(new LoginResponseDTO(
+            token, 
+            usuario.getNome(), 
+            usuario.getEmail(), 
+            usuario.getRole()
+    ));
     }
 }
