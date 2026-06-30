@@ -146,7 +146,7 @@ public class ScraperService {
         }
     }
 
-    // Define inteligentemente se as inscrições ainda estão válidas ou já encerraram.
+    // Define se as inscrições ainda estão válidas ou já encerraram.
      
     private StatusEdital calcularStatus(LocalDate dataInscricaoFim) {
         if (dataInscricaoFim == null) {

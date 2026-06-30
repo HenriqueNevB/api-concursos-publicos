@@ -16,7 +16,7 @@ import java.time.ZoneOffset;
 public class TokenService {
 
     // Se não tiver uma propriedade definida no application.yalm, usa a string padrão
-    @Value("${api.security.token.secret")
+    @Value("${api.security.token.secret}")
     private String secret;
 
     public String gerarToken(Usuario usuario) {
